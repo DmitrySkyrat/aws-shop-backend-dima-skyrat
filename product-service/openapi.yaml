@@ -22,6 +22,34 @@ paths:
                   $ref: '#/components/schemas/Product'
         '500':
           description: Internal server error
+    post:
+      summary: Create a new product
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductWithStock'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /products/{productId}:
     get:
       summary: Get product by ID
@@ -59,3 +87,34 @@ components:
           type: string
         price:
           type: number
+    ProductWithStock:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            count:
+              type: integer
+              minimum: 0
+    CreateProductRequest:
+      type: object
+      required:
+        - title
+        - price
+        - count
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        price:
+          type: number
+          exclusiveMinimum: 0
+        count:
+          type: integer
+          minimum: 0
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string

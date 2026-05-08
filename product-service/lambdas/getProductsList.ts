@@ -1,40 +1,41 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
-const products = [
-    {
-        id: '1',
-        title: 'Product 1',
-        description: 'Description for product 1',
-        price: 100,
-    },
-    {
-        id: '2',
-        title: 'Product 2',
-        description: 'Description for product 2',
-        price: 200,
-    },
-    {
-        id: '3',
-        title: 'Product 3',
-        description: 'Description for product 3',
-        price: 300,
-    },
-];
+const client = new DynamoDBClient({});
+const dynamoDB = DynamoDBDocumentClient.from(client);
+const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE!;
+const STOCKS_TABLE = process.env.STOCKS_TABLE!;
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-    try {
-        return {
-            statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-            },
-            body: JSON.stringify(products),
-        };
-    } catch (error) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ message: 'Internal Server Error' }),
-        };
-    }
+  console.log('Incoming request:', JSON.stringify(event));
+
+  try {
+    const productsResult = await dynamoDB.send(new ScanCommand({ TableName: PRODUCTS_TABLE }));
+    const stocksResult = await dynamoDB.send(new ScanCommand({ TableName: STOCKS_TABLE }));
+
+    const products = productsResult.Items || [];
+    const stocks = stocksResult.Items || [];
+
+    const joinedProducts = products.map(product => ({
+      ...product,
+      count: stocks.find(stock => stock.product_id === product.id)?.count || 0,
+    }));
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+      body: JSON.stringify(joinedProducts),
+    };
+  } catch (error) {
+    console.error('Error:', error);
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Internal Server Error' }),
+    };
+  }
 };
