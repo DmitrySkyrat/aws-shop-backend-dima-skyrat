@@ -7,6 +7,10 @@
     "destroy": "cdk destroy",
     "test": "jest"
   },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.161",
     "@types/jest": "^30.0.0",
@@ -16,7 +20,7 @@
     "constructs": "^10.0.0",
     "jest": "^30.3.0",
     "ts-jest": "^29.4.9",
-    "ts-node": "^10.9.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.0.0"
   }
 }
