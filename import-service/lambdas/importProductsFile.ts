@@ -22,7 +22,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   const bucketName = process.env.BUCKET_NAME!;
   const region = process.env.REGION!;
-  const client = new S3Client({ region });
+  const client = new S3Client({ region, requestChecksumCalculation: 'WHEN_REQUIRED' });
   const key = `uploaded/${fileName}`;
 
   const command = new PutObjectCommand({

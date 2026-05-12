@@ -1,5 +1,6 @@
 import { S3Event } from 'aws-lambda';
 import { S3Client, GetObjectCommand, CopyObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { Readable } from 'stream';
 import csv from 'csv-parser';
 
@@ -19,6 +20,7 @@ export const handler = async (event: S3Event): Promise<void> => {
 
 async function parseCSV(bucketName: string, objectKey: string): Promise<void> {
   const s3Client = new S3Client({});
+  const sqsClient = new SQSClient({});
   const getCommand = new GetObjectCommand({ Bucket: bucketName, Key: objectKey });
   const response = await s3Client.send(getCommand);
 
@@ -27,20 +29,34 @@ async function parseCSV(bucketName: string, objectKey: string): Promise<void> {
   }
 
   const stream = response.Body as Readable;
+  const sendPromises: Promise<void>[] = [];
 
   await new Promise<void>((resolve, reject) => {
     stream
       .pipe(csv())
       .on('data', (data: Record<string, string>) => {
-        console.log('Parsed record:', JSON.stringify(data));
+        const promise = sqsClient
+          .send(
+            new SendMessageCommand({
+              QueueUrl: process.env.SQS_QUEUE_URL!,
+              MessageBody: JSON.stringify(data),
+            })
+          )
+          .then(() => undefined);
+        sendPromises.push(promise);
       })
       .on('error', (error: Error) => {
         console.error('CSV parsing error:', error);
         reject(error);
       })
-      .on('end', () => {
-        console.log(`Finished parsing: ${objectKey}`);
-        resolve();
+      .on('end', async () => {
+        try {
+          await Promise.all(sendPromises);
+          console.log(`Finished parsing and queuing: ${objectKey}`);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
       });
   });
 }
