@@ -62,13 +62,28 @@ export class ImportServiceStack extends cdk.Stack {
       { prefix: 'uploaded/' },
     );
 
+    // Reference the basicAuthorizer lambda from the authorization-service stack
+    const basicAuthorizerArn = cdk.Fn.importValue('BasicAuthorizerArn');
+    const basicAuthorizerLambda = lambda.Function.fromFunctionArn(
+      this,
+      'BasicAuthorizerLambda',
+      basicAuthorizerArn,
+    );
+
     const api = new apigateway.RestApi(this, 'ImportApi', {
       restApiName: 'Import Service API',
       description: 'API for product import',
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['*'],
       },
+    });
+
+    const basicAuthorizer = new apigateway.TokenAuthorizer(this, 'BasicAuthorizer', {
+      handler: basicAuthorizerLambda,
+      identitySource: 'method.request.header.Authorization',
+      resultsCacheTtl: cdk.Duration.seconds(0),
     });
 
     const importResource = api.root.addResource('import');
@@ -82,6 +97,8 @@ export class ImportServiceStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(importProductsFileLambda),
       {
+        authorizer: basicAuthorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
         requestParameters: {
           'method.request.querystring.name': true,
         },
