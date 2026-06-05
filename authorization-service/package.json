@@ -1,0 +1,26 @@
+{
+  "name": "authorization-service",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "npm run build && cdk deploy",
+    "destroy": "cdk destroy",
+    "test": "jest"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.161",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.100.0",
+    "aws-cdk-lib": "^2.100.0",
+    "constructs": "^10.0.0",
+    "esbuild": "^0.28.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
+}
