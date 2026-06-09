@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import serverlessExpress from '@vendia/serverless-express';
+import { configure as serverlessExpress } from '@vendia/serverless-express';
 import * as express from 'express';
 import helmet from 'helmet';
 

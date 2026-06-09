@@ -7,9 +7,22 @@ import { CreateOrderPayload, OrderStatus } from '../type';
 export class OrderService {
   constructor(@Inject('DATABASE_POOL') private pool: Pool) {}
 
-  async getAll(): Promise<Order[]> {
-    const { rows } = await this.pool.query<Order>(`SELECT * FROM orders`);
-    return rows;
+  async getAll(): Promise<Record<string, unknown>[]> {
+    const { rows } = await this.pool.query(`SELECT * FROM orders`);
+    return rows.map((row) => ({
+      id: row.id,
+      items: [],
+      address: row.delivery ?? {},
+      statusHistory: [
+        {
+          status: row.status,
+          timestamp: Date.now(),
+          comment: row.comments ?? '',
+        },
+      ],
+      status: row.status,
+      total: Number(row.total),
+    }));
   }
 
   async findById(orderId: string): Promise<Order | null> {

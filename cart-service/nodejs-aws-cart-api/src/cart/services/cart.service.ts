@@ -88,4 +88,46 @@ export class CartService {
       [status, cartId],
     );
   }
+
+  async checkoutInTransaction(
+    cartId: string,
+    orderData: {
+      userId: string;
+      address: Record<string, unknown>;
+      total: number;
+    },
+  ): Promise<{ id: string; status: string; total: number }> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const { rows } = await client.query(
+        `INSERT INTO orders (user_id, cart_id, payment, delivery, comments, status, total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          orderData.userId,
+          cartId,
+          JSON.stringify({}),
+          JSON.stringify(orderData.address),
+          '',
+          'OPEN',
+          orderData.total,
+        ],
+      );
+
+      await client.query(
+        `UPDATE carts SET status = 'ORDERED', updated_at = NOW() WHERE id = $1`,
+        [cartId],
+      );
+
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }

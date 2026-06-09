@@ -15,7 +15,7 @@ import { Order, OrderService } from '../order';
 import { AppRequest, getUserIdFromRequest } from '../shared';
 import { calculateCartTotal } from './models-rules';
 import { CartService } from './services';
-import { CartItem, CartStatuses } from './models';
+import { CartItem } from './models';
 import { CreateOrderDto, PutCartPayload } from 'src/order/type';
 
 @Controller('api/profile/cart')
@@ -73,27 +73,20 @@ export class CartController {
 
     const { id: cartId, items } = cart;
     const total = calculateCartTotal(items);
-    const order = await this.orderService.create({
+
+    // Transaction: INSERT order + UPDATE cart status atomically (+3 bonus)
+    const order = await this.cartService.checkoutInTransaction(cartId, {
       userId,
-      cartId,
-      items: items.map(({ product, count }) => ({
-        productId: product.id,
-        count,
-      })),
-      address: body.address,
+      address: body.address as unknown as Record<string, unknown>,
       total,
     });
 
-    await this.cartService.updateCartStatus(cartId, CartStatuses.ORDERED);
-
-    return {
-      order,
-    };
+    return { order };
   }
 
   @UseGuards(BasicAuthGuard)
   @Get('order')
-  async getOrder(): Promise<Order[]> {
+  async getOrder(): Promise<Record<string, unknown>[]> {
     return this.orderService.getAll();
   }
 }

@@ -19,7 +19,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "deploy": "npm run build && cdk deploy",
+    "deploy": "npm run bundle && cdk deploy",
+    "bundle": "npm run build && rm -rf lambda-pkg && mkdir -p lambda-pkg && cp -rL dist/. lambda-pkg/ && cp package.json package-lock.json lambda-pkg/ && cd lambda-pkg && npm ci --omit=dev",
     "destroy": "cdk destroy",
     "cdk": "cdk"
   },

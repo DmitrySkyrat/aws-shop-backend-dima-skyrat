@@ -1,12 +1,12 @@
--- Task 8.2: Create tables for Cart Service
--- Run this script against your PostgreSQL database (e.g. via DBeaver / psql)
-
--- Enable UUID generation
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ─────────────────────────────────────────────────────────────
--- carts
--- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+  id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  name     VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email    VARCHAR(255)
+);
+
 CREATE TABLE IF NOT EXISTS carts (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID        NOT NULL,
@@ -18,14 +18,6 @@ CREATE TABLE IF NOT EXISTS carts (
 
 CREATE INDEX IF NOT EXISTS idx_carts_user_id ON carts (user_id);
 
--- ─────────────────────────────────────────────────────────────
--- cart_items
--- product_id  – UUID of the product (FK to product-service, not local)
--- count       – number of items
--- product     – JSONB snapshot of product details (title, price, …)
---               stored for convenience so the cart can render without
---               calling the product service on every request
--- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS cart_items (
   cart_id    UUID    NOT NULL REFERENCES carts (id) ON DELETE CASCADE,
   product_id UUID    NOT NULL,
@@ -34,9 +26,6 @@ CREATE TABLE IF NOT EXISTS cart_items (
   PRIMARY KEY (cart_id, product_id)
 );
 
--- ─────────────────────────────────────────────────────────────
--- orders  (bonus +20)
--- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS orders (
   id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id  UUID        NOT NULL,

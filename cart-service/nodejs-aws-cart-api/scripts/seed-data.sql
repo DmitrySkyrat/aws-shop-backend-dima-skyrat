@@ -1,15 +1,9 @@
--- Task 8.2: Seed data for Cart Service
--- Run AFTER create-tables.sql
+INSERT INTO users (id, name, password)
+VALUES
+  ('a3c1b2d4-e5f6-7890-abcd-ef1234567890', 'dmitriy', 'TEST_PASSWORD'),
+  ('b4d2c3e5-f6a7-8901-bcde-f01234567891', 'testuser', 'TEST_PASSWORD')
+ON CONFLICT (name) DO NOTHING;
 
--- ─────────────────────────────────────────────────────────────
--- Sample users (fixed UUIDs so foreign keys are stable)
--- ─────────────────────────────────────────────────────────────
--- user_id_1 = 'a3c1b2d4-e5f6-7890-abcd-ef1234567890'
--- user_id_2 = 'b4d2c3e5-f6a7-8901-bcde-f01234567891'
-
--- ─────────────────────────────────────────────────────────────
--- Sample carts
--- ─────────────────────────────────────────────────────────────
 INSERT INTO carts (id, user_id, status)
 VALUES
   ('c0a80101-0000-0000-0000-000000000001',
@@ -20,9 +14,6 @@ VALUES
    'ORDERED')
 ON CONFLICT (id) DO NOTHING;
 
--- ─────────────────────────────────────────────────────────────
--- Sample cart items  (product UUIDs match the product-service)
--- ─────────────────────────────────────────────────────────────
 INSERT INTO cart_items (cart_id, product_id, count, product)
 VALUES
   ('c0a80101-0000-0000-0000-000000000001',
@@ -41,9 +32,6 @@ VALUES
    '{"id":"3e8f4d19-7c24-4b8e-a2f5-1a9b0c7d5e3f","title":"Thingamajig C","description":"A cool thingamajig","price":9.99}')
 ON CONFLICT (cart_id, product_id) DO NOTHING;
 
--- ─────────────────────────────────────────────────────────────
--- Sample orders  (bonus)
--- ─────────────────────────────────────────────────────────────
 INSERT INTO orders (id, user_id, cart_id, payment, delivery, comments, status, total)
 VALUES
   ('e0a10201-0000-0000-0000-000000000001',
