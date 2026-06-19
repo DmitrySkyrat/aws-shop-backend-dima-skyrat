@@ -1,62 +1,133 @@
-import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { Injectable, Inject } from '@nestjs/common';
+import { Pool } from 'pg';
 import { Cart, CartStatuses } from '../models';
 import { PutCartPayload } from 'src/order/type';
 
 @Injectable()
 export class CartService {
-  private userCarts: Record<string, Cart> = {};
+  constructor(@Inject('DATABASE_POOL') private pool: Pool) {}
 
-  findByUserId(userId: string): Cart {
-    return this.userCarts[userId];
+  private async getCartItems(cartId: string): Promise<Cart['items']> {
+    const { rows } = await this.pool.query<{
+      product_id: string;
+      count: number;
+      product: Cart['items'][number]['product'];
+    }>('SELECT product_id, count, product FROM cart_items WHERE cart_id = $1', [
+      cartId,
+    ]);
+    return rows.map((row) => ({ product: row.product, count: row.count }));
   }
 
-  createByUserId(user_id: string): Cart {
-    const timestamp = Date.now();
-
-    const userCart = {
-      id: randomUUID(),
-      user_id,
-      created_at: timestamp,
-      updated_at: timestamp,
-      status: CartStatuses.OPEN,
-      items: [],
-    };
-
-    this.userCarts[user_id] = userCart;
-
-    return userCart;
+  async findByUserId(userId: string): Promise<Cart | null> {
+    const { rows } = await this.pool.query<Omit<Cart, 'items'>>(
+      `SELECT id, user_id, created_at, updated_at, status
+       FROM carts WHERE user_id = $1 AND status = 'OPEN' LIMIT 1`,
+      [userId],
+    );
+    if (!rows[0]) return null;
+    const items = await this.getCartItems(rows[0].id);
+    return { ...rows[0], items };
   }
 
-  findOrCreateByUserId(userId: string): Cart {
-    const userCart = this.findByUserId(userId);
+  async createByUserId(user_id: string): Promise<Cart> {
+    const { rows } = await this.pool.query<Omit<Cart, 'items'>>(
+      `INSERT INTO carts (user_id, status) VALUES ($1, 'OPEN') RETURNING *`,
+      [user_id],
+    );
+    return { ...rows[0], items: [] };
+  }
 
-    if (userCart) {
-      return userCart;
+  async findOrCreateByUserId(userId: string): Promise<Cart> {
+    const cart = await this.findByUserId(userId);
+    return cart ?? this.createByUserId(userId);
+  }
+
+  async updateByUserId(userId: string, payload: PutCartPayload): Promise<Cart> {
+    const cart = await this.findOrCreateByUserId(userId);
+
+    if (payload.count === 0) {
+      await this.pool.query(
+        'DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2',
+        [cart.id, payload.product.id],
+      );
+    } else {
+      await this.pool.query(
+        `INSERT INTO cart_items (cart_id, product_id, count, product)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (cart_id, product_id)
+         DO UPDATE SET count = EXCLUDED.count, product = EXCLUDED.product`,
+        [
+          cart.id,
+          payload.product.id,
+          payload.count,
+          JSON.stringify(payload.product),
+        ],
+      );
     }
 
-    return this.createByUserId(userId);
-  }
-
-  updateByUserId(userId: string, payload: PutCartPayload): Cart {
-    const userCart = this.findOrCreateByUserId(userId);
-
-    const index = userCart.items.findIndex(
-      ({ product }) => product.id === payload.product.id,
+    await this.pool.query(
+      `UPDATE carts SET updated_at = NOW() WHERE id = $1`,
+      [cart.id],
     );
 
-    if (index === -1) {
-      userCart.items.push(payload);
-    } else if (payload.count === 0) {
-      userCart.items.splice(index, 1);
-    } else {
-      userCart.items[index] = payload;
-    }
-
-    return userCart;
+    const items = await this.getCartItems(cart.id);
+    return { ...cart, items };
   }
 
-  removeByUserId(userId): void {
-    this.userCarts[userId] = null;
+  async removeByUserId(userId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE carts SET status = 'ORDERED', updated_at = NOW()
+       WHERE user_id = $1 AND status = 'OPEN'`,
+      [userId],
+    );
+  }
+
+  async updateCartStatus(cartId: string, status: CartStatuses): Promise<void> {
+    await this.pool.query(
+      `UPDATE carts SET status = $1, updated_at = NOW() WHERE id = $2`,
+      [status, cartId],
+    );
+  }
+
+  async checkoutInTransaction(
+    cartId: string,
+    orderData: {
+      userId: string;
+      address: Record<string, unknown>;
+      total: number;
+    },
+  ): Promise<{ id: string; status: string; total: number }> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const { rows } = await client.query(
+        `INSERT INTO orders (user_id, cart_id, payment, delivery, comments, status, total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          orderData.userId,
+          cartId,
+          JSON.stringify({}),
+          JSON.stringify(orderData.address),
+          '',
+          'OPEN',
+          orderData.total,
+        ],
+      );
+
+      await client.query(
+        `UPDATE carts SET status = 'ORDERED', updated_at = NOW() WHERE id = $1`,
+        [cartId],
+      );
+
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 }
