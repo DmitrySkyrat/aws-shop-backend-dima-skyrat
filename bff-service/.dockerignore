@@ -1,0 +1,23 @@
+# Build artifacts — rebuilt inside Docker
+dist/
+
+# Dependencies — installed inside Docker from package.json
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Git metadata
+.git/
+.gitignore
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets
+.env
+.env.*
+*.pem
