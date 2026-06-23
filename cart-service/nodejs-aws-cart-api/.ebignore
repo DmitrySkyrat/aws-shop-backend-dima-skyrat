@@ -1,0 +1,33 @@
+# When this file exists, EB CLI uses it instead of .gitignore,
+# packaging ALL files except those listed here (regardless of git status).
+
+# Build artifacts (rebuilt inside the Docker container)
+dist/
+
+# Dependencies (installed inside the Docker container)
+node_modules/
+
+# CDK output and Lambda packaging artefacts
+cdk.out/
+lambda-pkg/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+
+# Git metadata
+.git/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets — must not be bundled into EB deployment package
+.env
+.env.*
+*.pem

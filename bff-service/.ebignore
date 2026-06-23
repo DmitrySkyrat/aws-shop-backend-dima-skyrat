@@ -1,0 +1,14 @@
+# When this file exists, EB CLI packages ALL files except those listed here,
+# regardless of git status — so Dockerfile is always included.
+
+dist/
+node_modules/
+logs/
+*.log
+.git/
+.DS_Store
+.idea/
+.vscode/
+.env
+.env.*
+*.pem
