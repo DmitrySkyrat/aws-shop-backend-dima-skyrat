@@ -1,6 +1,9 @@
 # Dependencies — installed inside Docker from package.json
 node_modules/
 
+# Build output
+dist/
+
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
